@@ -1,0 +1,52 @@
+# Haskell
+cabal-dev
+*.o
+*.hi
+*.chi
+*.chs.h
+*.prof*
+*.aux*
+*.ps*
+*.hp*
+.shelly
+Setup.hs
+snaplets
+
+# Python
+__pycache__
+*.pyc
+*.pyc
+
+# Dirs
+vendor
+dist
+tmp
+log
+
+# CTAGS
+TAGS
+tags
+
+# Emacs/Vim
+*~
+*#
+.#*
+\#*#
+.*.sw[a-z]
+*.un~
+*.org
+
+# OSX
+.DS_Store
+
+# Artifacts
+*.tar
+*.gz
+*.tmp
+.devel
+.deps
+.test
+CHANGELOG.md
+
+# Sqlite
+*.db
