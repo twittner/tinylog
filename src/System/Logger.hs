@@ -5,12 +5,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.Logger
-    ( Level (..)
+    ( Level    (..)
+    , Output   (..)
+    , Settings (..)
     , Logger
     , Format
 
     , new
     , create
+    , defSettings
     , level
     , flush
     , close
@@ -45,7 +48,6 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid
 import Data.String
 import Data.UnixTime hiding (Format)
-import GHC.IO.FD (FD, stdout, stderr)
 import System.Date.Cache
 import System.Environment (lookupEnv)
 
@@ -70,11 +72,23 @@ l2b Fatal = "FATAL"
 {-# INLINE l2b #-}
 
 data Logger = Logger
-    { _level     :: !Level
-    , _logger    :: !FL.LoggerSet
+    { _logger    :: !FL.LoggerSet
     , _getDate   :: !DateCacheGetter
     , _closeDate :: !DateCacheCloser
+    , _settings  :: !Settings
     }
+
+data Settings = Settings
+    { logLevel  :: !Level
+    , output    :: !Output
+    , format    :: !Format
+    , delimiter :: !ByteString
+    } deriving (Eq, Ord, Show)
+
+data Output
+    = StdOut
+    | Path FilePath
+    deriving (Eq, Ord, Show)
 
 newtype Format = Format
     { template :: ByteString
@@ -86,26 +100,26 @@ instance IsString Format where
 iso8601UTC :: Format
 iso8601UTC = "%Y-%0m-%0dT%0H:%0M:%0SZ"
 
-new :: MonadIO m => Format -> Level -> FilePath -> m Logger
-new t l p = liftIO $ do
-    s <- fmap (readNote "Invalid LOG_BUFFER.") <$> lookupEnv "LOG_BUFFER"
-    f <- open p
-    g <- FL.newLoggerSet (fromMaybe FL.defaultBufSize s) f
-    (x, y) <- clockDateCacher $ DateCacheConf getUnixTime format
-    return $ Logger l g x y
+defSettings :: Settings
+defSettings = Settings Debug StdOut iso8601UTC ", "
+
+new :: MonadIO m => Settings -> m Logger
+new s = liftIO $ do
+    n <- fmap (readNote "Invalid LOG_BUFFER.") <$> lookupEnv "LOG_BUFFER"
+    g <- FL.newLoggerSet (fromMaybe FL.defaultBufSize n) (mapOut $ output s)
+    (x, y) <- clockDateCacher $ DateCacheConf getUnixTime fmt
+    return $ Logger g x y s
   where
-    open :: FilePath -> IO FD
-    open "stdout" = return stdout
-    open "stderr" = return stderr
-    open path     = FL.logOpen path
+    mapOut StdOut   = Nothing
+    mapOut (Path p) = Just p
 
-    format :: UnixTime -> IO ByteString
-    format = return . formatUnixTimeGMT (template t)
+    fmt :: UnixTime -> IO ByteString
+    fmt = return . formatUnixTimeGMT (template $ format s)
 
-create :: MonadIO m => FilePath -> m Logger
+create :: MonadIO m => Output -> m Logger
 create p = liftIO $ do
     ll <- fmap (readNote "Invalid LOG_LEVEL.") <$> lookupEnv "LOG_LEVEL"
-    new iso8601UTC (fromMaybe Debug ll) p
+    new defSettings { logLevel = fromMaybe Debug ll, output = p }
 
 readNote :: Read a => String -> String -> a
 readNote m s = case reads s of
@@ -113,11 +127,11 @@ readNote m s = case reads s of
     _         -> error m
 
 log :: MonadIO m => Logger -> Level -> ByteString -> m ()
-log g l m = unless (_level g > l) . liftIO $ putMsg g l m
+log g l m = unless (level g > l) . liftIO $ putMsg g l m
 {-# INLINE log #-}
 
 logM :: MonadIO m => Logger -> Level -> m ByteString -> m ()
-logM g l m = unless (_level g > l) $ m >>= putMsg g l
+logM g l m = unless (level g > l) $ m >>= putMsg g l
 {-# INLINE logM #-}
 
 trace, debug, info, warn, err, fatal :: MonadIO m => Logger -> ByteString -> m ()
@@ -157,11 +171,12 @@ close g = liftIO $ do
     FL.rmLoggerSet (_logger g)
 
 level :: Logger -> Level
-level = _level
+level = logLevel . _settings
+{-# INLINE level #-}
 
 putMsg :: MonadIO m => Logger -> Level -> ByteString -> m ()
 putMsg g l m = liftIO $ do
+    let x = delimiter $ _settings g
     d <- _getDate g
-    FL.pushLogStr (_logger g) . FL.toLogStr $ mconcat
-        [ d, ", ", l2b l, ", ", m, "\n" ]
+    FL.pushLogStr (_logger g) . FL.toLogStr $ mconcat [d, x, l2b l, x, m, "\n"]
 {-# INLINE putMsg #-}
