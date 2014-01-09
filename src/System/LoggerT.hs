@@ -8,9 +8,20 @@
 module System.LoggerT
     ( LoggerT
     , MonadLogger (..)
-    , L.Logger
-    , L.Level     (..)
     , runLoggerT
+
+    , L.Level    (..)
+    , L.Output   (..)
+    , L.Settings (..)
+    , L.Logger
+    , L.DateFormat
+
+    , L.new
+    , L.create
+    , L.defSettings
+    , L.iso8601UTC
+
+    , module M
     )
 where
 
@@ -19,8 +30,8 @@ import Control.Applicative
 import Control.Monad.Reader
 import Control.Monad.Catch
 import Data.ByteString (ByteString)
-import Data.Monoid
 import System.Logger (Logger, Level (..))
+import System.Logger.Message as M
 
 import qualified Data.ByteString as BS
 import qualified System.Logger   as L
@@ -42,19 +53,19 @@ class MonadIO m => MonadLogger m where
     prefix :: m ByteString
     prefix = return BS.empty
 
-    log :: Level -> ByteString -> m ()
+    log :: Level -> Builder -> m ()
     log l m = do
         g <- logger
         p <- prefix
-        L.log g l (p <> m)
+        L.log g l (msg' p . m)
 
-    logM :: Level -> m ByteString -> m ()
+    logM :: Level -> m Builder -> m ()
     logM l m = do
         g <- logger
         p <- prefix
-        L.logM g l ((<> p) `liftM` m)
+        L.logM g l ((msg' p .) `liftM` m)
 
-    trace, debug, info, warn, err, fatal :: ByteString -> m ()
+    trace, debug, info, warn, err, fatal :: Builder -> m ()
     trace = log Trace
     debug = log Debug
     info  = log Info
@@ -62,7 +73,7 @@ class MonadIO m => MonadLogger m where
     err   = log Error
     fatal = log Fatal
 
-    traceM, debugM, infoM, warnM, errM, fatalM :: m ByteString -> m ()
+    traceM, debugM, infoM, warnM, errM, fatalM :: m Builder -> m ()
     traceM = logM Trace
     debugM = logM Debug
     infoM  = logM Info

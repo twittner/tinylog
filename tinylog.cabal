@@ -25,6 +25,7 @@ library
 
     exposed-modules:
           System.Logger
+        , System.Logger.Message
         , System.LoggerT
 
     build-depends:
@@ -32,7 +33,7 @@ library
         , bytestring   >= 0.10
         , date-cache   >= 0.3
         , exceptions   >= 0.3
-        , fast-logger  == 2.1.*
+        , fast-logger  >= 2.1.2 && < 2.2
         , mtl          >= 2.1
         , transformers >= 0.3
         , unix-time    >= 0.1
