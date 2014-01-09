@@ -15,8 +15,8 @@ newtype Msg = Msg
 empty :: Msg
 empty = Msg []
 
-set :: ByteString -> Builder
-set b = const $ Msg [b]
+value :: ByteString -> Builder
+value b = const $ Msg [b]
 
 msg :: ByteString -> Builder
 msg p (Msg m) = Msg (p:m)

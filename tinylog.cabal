@@ -1,5 +1,5 @@
 name:                 tinylog
-version:              0.2
+version:              0.3
 synopsis:             Simplistic logging using fast-logger.
 author:               Toralf Wittner
 maintainer:           Toralf Wittner <tw@dtex.org>
