@@ -46,7 +46,6 @@ import Control.Monad.IO.Class
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 (pack)
 import Data.Maybe (fromMaybe)
-import Data.Monoid
 import Data.String
 import Data.UnixTime
 import System.Date.Cache
@@ -170,13 +169,11 @@ level :: Logger -> Level
 level = logLevel . _settings
 {-# INLINE level #-}
 
-{-# INLINE putMsg #-}
 putMsg :: MonadIO m => Logger -> Level -> Builder -> m ()
 putMsg g l f = liftIO $ do
-    let x = delimiter $ _settings g
-    let m = render x (msg (l2b l) . f)
-    d <- maybe (return "") (fmap (<> x)) (_getDate g)
-    FL.pushLogStr (_logger g) $ FL.toLogStr (d <> m <> "\n")
+    d <- maybe (return id) (liftM msg) (_getDate g)
+    let m = render (delimiter $ _settings g) (d . msg (l2b l) . f)
+    FL.pushLogStr (_logger g) (FL.toLogStr m)
   where
     l2b :: Level -> ByteString
     l2b Trace = "T"
