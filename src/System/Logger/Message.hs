@@ -3,9 +3,7 @@
 module System.Logger.Message
     ( Builder
     , Msg
-    , value
     , msg
-    , msg'
     , field
     , render
     ) where
@@ -21,15 +19,8 @@ import qualified Data.ByteString.Lazy.Builder.Extras as B
 type Builder = Msg -> Msg
 newtype Msg  = Msg { builders :: [B.Builder] }
 
-value :: ByteString -> Builder
-value b = const $ Msg [B.byteString b]
-
 msg :: ByteString -> Builder
 msg p (Msg m) = Msg (B.byteString p : m)
-
-msg' :: ByteString -> Builder
-msg' ""     m  = m
-msg' p (Msg m) = Msg (B.byteString p : m)
 
 field :: ByteString -> ByteString -> Builder
 field k v (Msg m) = Msg $
