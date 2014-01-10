@@ -28,13 +28,10 @@ where
 import Prelude hiding (log)
 import Control.Applicative
 import Control.Monad.Reader
-import Control.Monad.Catch
-import Data.ByteString (ByteString)
 import System.Logger (Logger, Level (..))
 import System.Logger.Message as M
 
-import qualified Data.ByteString as BS
-import qualified System.Logger   as L
+import qualified System.Logger as L
 
 newtype LoggerT m a = LoggerT
     { unwrap :: ReaderT Logger m a
@@ -42,7 +39,6 @@ newtype LoggerT m a = LoggerT
                , Applicative
                , Monad
                , MonadIO
-               , MonadCatch
                , MonadReader Logger
                , MonadTrans
                )
@@ -50,20 +46,20 @@ newtype LoggerT m a = LoggerT
 class MonadIO m => MonadLogger m where
     logger :: m Logger
 
-    prefix :: m ByteString
-    prefix = return BS.empty
+    prefix :: m Builder
+    prefix = return id
 
     log :: Level -> Builder -> m ()
     log l m = do
         g <- logger
         p <- prefix
-        L.log g l (msg' p . m)
+        L.log g l (p . m)
 
     logM :: Level -> m Builder -> m ()
     logM l m = do
         g <- logger
         p <- prefix
-        L.logM g l ((msg' p .) `liftM` m)
+        L.logM g l ((p .) `liftM` m)
 
     trace, debug, info, warn, err, fatal :: Builder -> m ()
     trace = log Trace
