@@ -79,6 +79,7 @@ data Settings = Settings
 
 data Output
     = StdOut
+    | StdErr
     | Path FilePath
     deriving (Eq, Ord, Show)
 
@@ -99,13 +100,14 @@ new :: MonadIO m => Settings -> m Logger
 new s = liftIO $ do
     n <- fmap (readNote "Invalid LOG_BUFFER") <$> lookupEnv "LOG_BUFFER"
     l <- fmap (readNote "Invalid LOG_LEVEL")  <$> lookupEnv "LOG_LEVEL"
-    g <- FL.newLoggerSet (fromMaybe FL.defaultBufSize n) (mapOut $ output s)
+    g <- fn (output s) (fromMaybe FL.defaultBufSize n)
     c <- clockCache (format s)
     let s' = s { logLevel = fromMaybe (logLevel s) l }
     return $ Logger g s' (fst <$> c) (snd <$> c)
   where
-    mapOut StdOut   = Nothing
-    mapOut (Path p) = Just p
+    fn StdOut   = FL.newStdoutLoggerSet
+    fn StdErr   = FL.newStderrLoggerSet
+    fn (Path p) = flip FL.newFileLoggerSet p
 
     clockCache "" = return Nothing
     clockCache f  = Just <$> clockDateCacher (DateCacheConf getUnixTime (fmt f))
