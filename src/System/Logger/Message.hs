@@ -9,6 +9,7 @@ module System.Logger.Message
     , Msg
     , msg
     , field
+    , (=:)
     , render
     ) where
 
@@ -26,9 +27,11 @@ newtype Msg  = Msg { builders :: [B.Builder] }
 msg :: ByteString -> Builder
 msg p (Msg m) = Msg (B.byteString p : m)
 
-field :: ByteString -> ByteString -> Builder
+field, (=:) :: ByteString -> ByteString -> Builder
 field k v (Msg m) = Msg $
     B.byteString k <> B.byteString "=" <> B.byteString v : m
+
+(=:) = field
 
 render :: ByteString -> Builder -> L.ByteString
 render s f = finish

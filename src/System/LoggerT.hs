@@ -27,6 +27,7 @@ where
 
 import Prelude hiding (log)
 import Control.Applicative
+import Control.Monad.Catch
 import Control.Monad.Reader
 import System.Logger (Logger, Level (..))
 import System.Logger.Message as M
@@ -39,6 +40,7 @@ newtype LoggerT m a = LoggerT
                , Applicative
                , Monad
                , MonadIO
+               , MonadCatch
                , MonadReader Logger
                , MonadTrans
                )
