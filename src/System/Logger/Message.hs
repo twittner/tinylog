@@ -49,9 +49,15 @@ instance ToBytes Word8        where bytes = B.word8Dec
 instance ToBytes Word16       where bytes = B.word16Dec
 instance ToBytes Word32       where bytes = B.word32Dec
 instance ToBytes Word64       where bytes = B.word64Dec
+instance ToBytes Float        where bytes = B.floatDec
+instance ToBytes Double       where bytes = B.doubleDec
 instance ToBytes Text         where bytes = B.byteString . encodeUtf8
 instance ToBytes T.Text       where bytes = B.lazyByteString . T.encodeUtf8
 instance ToBytes [Char]       where bytes = B.stringUtf8
+
+instance ToBytes Bool where
+    bytes True  = val "True"
+    bytes False = val "False"
 
 newtype Msg = Msg { builders :: [Builder] }
 
