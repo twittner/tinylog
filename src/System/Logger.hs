@@ -123,15 +123,15 @@ readNote m s = case reads s of
     [(a, "")] -> a
     _         -> error m
 
-log :: MonadIO m => Logger -> Level -> Builder -> m ()
+log :: MonadIO m => Logger -> Level -> (Msg -> Msg) -> m ()
 log g l m = unless (level g > l) . liftIO $ putMsg g l m
 {-# INLINE log #-}
 
-logM :: MonadIO m => Logger -> Level -> m Builder -> m ()
+logM :: MonadIO m => Logger -> Level -> m (Msg -> Msg) -> m ()
 logM g l m = unless (level g > l) $ m >>= putMsg g l
 {-# INLINE logM #-}
 
-trace, debug, info, warn, err, fatal :: MonadIO m => Logger -> Builder -> m ()
+trace, debug, info, warn, err, fatal :: MonadIO m => Logger -> (Msg -> Msg) -> m ()
 trace g = log g Trace
 debug g = log g Debug
 info  g = log g Info
@@ -145,7 +145,7 @@ fatal g = log g Fatal
 {-# INLINE err   #-}
 {-# INLINE fatal #-}
 
-traceM, debugM, infoM, warnM, errM, fatalM :: MonadIO m => Logger -> m Builder -> m ()
+traceM, debugM, infoM, warnM, errM, fatalM :: MonadIO m => Logger -> m (Msg -> Msg) -> m ()
 traceM g = logM g Trace
 debugM g = logM g Debug
 infoM  g = logM g Info
@@ -171,7 +171,7 @@ level :: Logger -> Level
 level = logLevel . _settings
 {-# INLINE level #-}
 
-putMsg :: MonadIO m => Logger -> Level -> Builder -> m ()
+putMsg :: MonadIO m => Logger -> Level -> (Msg -> Msg) -> m ()
 putMsg g l f = liftIO $ do
     d <- maybe (return id) (liftM msg) (_getDate g)
     let m = render (delimiter $ _settings g) (d . msg (l2b l) . f)

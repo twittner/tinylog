@@ -48,22 +48,22 @@ newtype LoggerT m a = LoggerT
 class MonadIO m => MonadLogger m where
     logger :: m Logger
 
-    prefix :: m Builder
+    prefix :: m (Msg -> Msg)
     prefix = return id
 
-    log :: Level -> Builder -> m ()
+    log :: Level -> (Msg -> Msg) -> m ()
     log l m = do
         g <- logger
         p <- prefix
         L.log g l (p . m)
 
-    logM :: Level -> m Builder -> m ()
+    logM :: Level -> m (Msg -> Msg) -> m ()
     logM l m = do
         g <- logger
         p <- prefix
         L.logM g l ((p .) `liftM` m)
 
-    trace, debug, info, warn, err, fatal :: Builder -> m ()
+    trace, debug, info, warn, err, fatal :: (Msg -> Msg) -> m ()
     trace = log Trace
     debug = log Debug
     info  = log Info
@@ -71,7 +71,7 @@ class MonadIO m => MonadLogger m where
     err   = log Error
     fatal = log Fatal
 
-    traceM, debugM, infoM, warnM, errM, fatalM :: m Builder -> m ()
+    traceM, debugM, infoM, warnM, errM, fatalM :: m (Msg -> Msg) -> m ()
     traceM = logM Trace
     debugM = logM Debug
     infoM  = logM Info

@@ -2,38 +2,76 @@
 -- License, v. 2.0. If a copy of the MPL was not distributed with this
 -- file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.Logger.Message
-    ( Builder
+    ( ToBytes (..)
     , Msg
     , msg
     , field
     , (=:)
+    , (+++)
+    , val
     , render
     ) where
 
 import Data.ByteString (ByteString)
+import Data.ByteString.Lazy.Builder (Builder)
+import Data.Int
 import Data.List (intersperse)
 import Data.Monoid
+import Data.Text (Text)
+import Data.Text.Encoding (encodeUtf8)
+import Data.Word
 
+import qualified Data.Text.Lazy                      as T
+import qualified Data.Text.Lazy.Encoding             as T
 import qualified Data.ByteString.Lazy                as L
 import qualified Data.ByteString.Lazy.Builder        as B
+import qualified Data.ByteString.Lazy.Builder.ASCII  as B
 import qualified Data.ByteString.Lazy.Builder.Extras as B
 
-type Builder = Msg -> Msg
-newtype Msg  = Msg { builders :: [B.Builder] }
+class ToBytes a where
+    bytes :: a -> Builder
 
-msg :: ByteString -> Builder
-msg p (Msg m) = Msg (B.byteString p : m)
+instance ToBytes Builder      where bytes = id
+instance ToBytes L.ByteString where bytes = B.lazyByteString
+instance ToBytes ByteString   where bytes = B.byteString
+instance ToBytes Char         where bytes = B.charUtf8
+instance ToBytes Int          where bytes = B.intDec
+instance ToBytes Int8         where bytes = B.int8Dec
+instance ToBytes Int16        where bytes = B.int16Dec
+instance ToBytes Int32        where bytes = B.int32Dec
+instance ToBytes Int64        where bytes = B.int64Dec
+instance ToBytes Word         where bytes = B.wordDec
+instance ToBytes Word8        where bytes = B.word8Dec
+instance ToBytes Word16       where bytes = B.word16Dec
+instance ToBytes Word32       where bytes = B.word32Dec
+instance ToBytes Word64       where bytes = B.word64Dec
+instance ToBytes Text         where bytes = B.byteString . encodeUtf8
+instance ToBytes T.Text       where bytes = B.lazyByteString . T.encodeUtf8
+instance ToBytes [Char]       where bytes = B.stringUtf8
 
-field, (=:) :: ByteString -> ByteString -> Builder
-field k v (Msg m) = Msg $
-    B.byteString k <> B.byteString "=" <> B.byteString v : m
+newtype Msg = Msg { builders :: [Builder] }
 
+msg :: ToBytes a => a -> Msg -> Msg
+msg p (Msg m) = Msg (bytes p : m)
+
+field, (=:) :: ToBytes a => ByteString -> a -> Msg -> Msg
+field k v (Msg m) = Msg $ bytes k <> B.byteString "=" <> bytes v : m
+
+infixr 5 =:
 (=:) = field
 
-render :: ByteString -> Builder -> L.ByteString
+infixr 5 +++
+(+++) :: (ToBytes a, ToBytes b) => a -> b -> Builder
+a +++ b = bytes a <> bytes b
+
+val :: ByteString -> Builder
+val = bytes
+
+render :: ByteString -> (Msg -> Msg) -> L.ByteString
 render s f = finish
            . mconcat
            . intersperse (B.byteString s)
