@@ -40,6 +40,7 @@ newtype LoggerT m a = LoggerT
                , Applicative
                , Monad
                , MonadIO
+               , MonadThrow
                , MonadCatch
                , MonadReader Logger
                , MonadTrans
