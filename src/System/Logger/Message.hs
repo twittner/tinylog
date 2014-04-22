@@ -29,7 +29,6 @@ import qualified Data.Text.Lazy                      as T
 import qualified Data.Text.Lazy.Encoding             as T
 import qualified Data.ByteString.Lazy                as L
 import qualified Data.ByteString.Lazy.Builder        as B
-import qualified Data.ByteString.Lazy.Builder.ASCII  as B
 import qualified Data.ByteString.Lazy.Builder.Extras as B
 
 class ToBytes a where
