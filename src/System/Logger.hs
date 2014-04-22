@@ -50,6 +50,7 @@ import Data.String
 import Data.UnixTime
 import System.Date.Cache
 import System.Environment (lookupEnv)
+import System.Log.FastLogger (BufSize)
 import System.Logger.Message as M
 
 import qualified System.Log.FastLogger as FL
@@ -75,6 +76,7 @@ data Settings = Settings
     , output    :: Output
     , format    :: DateFormat
     , delimiter :: ByteString
+    , bufSize   :: BufSize
     } deriving (Eq, Ord, Show)
 
 data Output
@@ -94,13 +96,13 @@ iso8601UTC :: DateFormat
 iso8601UTC = "%Y-%0m-%0dT%0H:%0M:%0SZ"
 
 defSettings :: Settings
-defSettings = Settings Debug StdOut iso8601UTC ", "
+defSettings = Settings Debug StdOut iso8601UTC ", " FL.defaultBufSize
 
 new :: MonadIO m => Settings -> m Logger
 new s = liftIO $ do
     n <- fmap (readNote "Invalid LOG_BUFFER") <$> lookupEnv "LOG_BUFFER"
     l <- fmap (readNote "Invalid LOG_LEVEL")  <$> lookupEnv "LOG_LEVEL"
-    g <- fn (output s) (fromMaybe FL.defaultBufSize n)
+    g <- fn (output s) (fromMaybe (bufSize s) n)
     c <- clockCache (format s)
     let s' = s { logLevel = fromMaybe (logLevel s) l }
     return $ Logger g s' (fst <$> c) (snd <$> c)
