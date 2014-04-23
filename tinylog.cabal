@@ -1,14 +1,14 @@
 name:                 tinylog
-version:              0.7.1
+version:              0.7.2
 synopsis:             Simplistic logging using fast-logger.
 author:               Toralf Wittner
 maintainer:           Toralf Wittner <tw@dtex.org>
 copyright:            (c) 2014 Toralf Wittner
-license:              OtherLicense
+license:              MPL-2.0
 license-file:         LICENSE
 category:             System
 build-type:           Simple
-cabal-version:        >= 1.10
+cabal-version:        >= 1.20
 
 description:
     Trivial logger on top of fast-logger.
