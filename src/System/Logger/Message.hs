@@ -5,13 +5,23 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | 'Msg' and 'ToBytes' assist in constructing log messages.
+-- For example:
+--
+-- @
+-- > g <- new defSettings { bufSize = 1, output = StdOut }
+-- > info g $ msg "some text" ~~ "key" .= "value" ~~ "okay" .= True
+-- 2014-04-28T21:18:20Z, I, some text, key=value, okay=True
+-- >
+-- @
 module System.Logger.Message
     ( ToBytes (..)
     , Msg
     , msg
     , field
-    , (=:)
+    , (.=)
     , (+++)
+    , (~~)
     , val
     , render
     ) where
@@ -62,22 +72,29 @@ instance ToBytes Bool where
 -- | Type representing log messages.
 newtype Msg = Msg { builders :: [Builder] }
 
--- | Log some value.
+-- | Turn some value into a 'Msg'.
 msg :: ToBytes a => a -> Msg -> Msg
 msg p (Msg m) = Msg (bytes p : m)
 
--- | Log some field, i.e. a key-value pair delimited by \"=\".
-field, (=:) :: ToBytes a => ByteString -> a -> Msg -> Msg
+-- | Render some field, i.e. a key-value pair delimited by \"=\".
+field :: ToBytes a => ByteString -> a -> Msg -> Msg
 field k v (Msg m) = Msg $ bytes k <> B.byteString "=" <> bytes v : m
 
-infixr 5 =:
-(=:) = field
+-- | Alias of 'field'.
+(.=) :: ToBytes a => ByteString -> a -> Msg -> Msg
+(.=) = field
+infixr 5 .=
 
-infixr 5 +++
+-- | Alias of '.' with lowered precedence to allow combination with '.='
+-- without requiring parentheses.
+(~~) :: (b -> c) -> (a -> b) -> a -> c
+(~~) = (.)
+infixr 4 ~~
 
 -- | Concatenate two 'ToBytes' values.
 (+++) :: (ToBytes a, ToBytes b) => a -> b -> Builder
 a +++ b = bytes a <> bytes b
+infixr 5 +++
 
 -- | Type restriction. Useful to disambiguate string literals when
 -- using @OverloadedStrings@ pragma.

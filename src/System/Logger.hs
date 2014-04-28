@@ -5,7 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Small layer on top of @fast-logger@ which adds log-levels and
--- timestamp support and not much more.
+-- timestamp support (using @date-cache@) and not much more.
 module System.Logger
     ( Level    (..)
     , Output   (..)
@@ -86,6 +86,7 @@ newtype DateFormat = DateFormat
 instance IsString DateFormat where
     fromString = DateFormat . pack
 
+-- | ISO 8601 date-time format.
 iso8601UTC :: DateFormat
 iso8601UTC = "%Y-%0m-%0dT%0H:%0M:%0SZ"
 
