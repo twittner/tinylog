@@ -28,25 +28,20 @@ module System.Logger.Class
     )
 where
 
-import Prelude hiding (log)
-import Control.Monad.Reader
-import System.Logger (Logger, Level (..))
+import System.Logger (Level (..))
 import System.Logger.Message as M
 
 import qualified System.Logger as L
 
-class MonadIO m => MonadLogger m where
+class Monad m => MonadLogger m where
     log :: Level -> (Msg -> Msg) -> m ()
-
-instance (MonadIO m, MonadReader Logger m) => MonadLogger (ReaderT r m) where
-    log l m = lift ask >>= \g -> L.log g l m
 
 -- | Abbreviation for 'log' using the corresponding log level.
 trace, debug, info, warn, err, fatal :: MonadLogger m => (Msg -> Msg) -> m ()
-trace = log Trace
-debug = log Debug
-info  = log Info
-warn  = log Warn
-err   = log Error
-fatal = log Fatal
+trace = System.Logger.Class.log Trace
+debug = System.Logger.Class.log Debug
+info  = System.Logger.Class.log Info
+warn  = System.Logger.Class.log Warn
+err   = System.Logger.Class.log Error
+fatal = System.Logger.Class.log Fatal
 
