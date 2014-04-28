@@ -29,9 +29,9 @@ import qualified Data.Text.Lazy                      as T
 import qualified Data.Text.Lazy.Encoding             as T
 import qualified Data.ByteString.Lazy                as L
 import qualified Data.ByteString.Lazy.Builder        as B
-import qualified Data.ByteString.Lazy.Builder.ASCII  as B
 import qualified Data.ByteString.Lazy.Builder.Extras as B
 
+-- | Convert some value to a 'Builder'.
 class ToBytes a where
     bytes :: a -> Builder
 
@@ -59,11 +59,14 @@ instance ToBytes Bool where
     bytes True  = val "True"
     bytes False = val "False"
 
+-- | Type representing log messages.
 newtype Msg = Msg { builders :: [Builder] }
 
+-- | Log some value.
 msg :: ToBytes a => a -> Msg -> Msg
 msg p (Msg m) = Msg (bytes p : m)
 
+-- | Log some field, i.e. a key-value pair delimited by \"=\".
 field, (=:) :: ToBytes a => ByteString -> a -> Msg -> Msg
 field k v (Msg m) = Msg $ bytes k <> B.byteString "=" <> bytes v : m
 
@@ -71,12 +74,18 @@ infixr 5 =:
 (=:) = field
 
 infixr 5 +++
+
+-- | Concatenate two 'ToBytes' values.
 (+++) :: (ToBytes a, ToBytes b) => a -> b -> Builder
 a +++ b = bytes a <> bytes b
 
+-- | Type restriction. Useful to disambiguate string literals when
+-- using @OverloadedStrings@ pragma.
 val :: ByteString -> Builder
 val = bytes
 
+-- | Intersperse parts of the log message with the given delimiter and
+-- render the whole builder into a 'L.ByteString'.
 render :: ByteString -> (Msg -> Msg) -> L.ByteString
 render s f = finish
            . mconcat

@@ -4,6 +4,8 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | Small layer on top of @fast-logger@ which adds log-levels and
+-- timestamp support and not much more.
 module System.Logger
     ( Level    (..)
     , Output   (..)
@@ -25,14 +27,6 @@ module System.Logger
     , warn
     , err
     , fatal
-
-    , logM
-    , traceM
-    , debugM
-    , infoM
-    , warnM
-    , errM
-    , fatalM
 
     , iso8601UTC
     , module M
@@ -72,11 +66,11 @@ data Logger = Logger
     }
 
 data Settings = Settings
-    { logLevel  :: Level
-    , output    :: Output
-    , format    :: DateFormat
-    , delimiter :: ByteString
-    , bufSize   :: BufSize
+    { logLevel  :: Level      -- ^ messages below this log level will be suppressed
+    , output    :: Output     -- ^ log sink
+    , format    :: DateFormat -- ^ the timestamp format (use \"\" to disable timestamps)
+    , delimiter :: ByteString -- ^ text to intersperse between fields of a log line
+    , bufSize   :: BufSize    -- ^ how many bytes to buffer before commiting to sink
     } deriving (Eq, Ord, Show)
 
 data Output
@@ -95,9 +89,25 @@ instance IsString DateFormat where
 iso8601UTC :: DateFormat
 iso8601UTC = "%Y-%0m-%0dT%0H:%0M:%0SZ"
 
+-- | Default settings for use with 'new':
+--
+--   * 'logLevel'  = 'Debug'
+--
+--   * 'output'    = 'StdOut'
+--
+--   * 'format'    = 'iso8601UTC'
+--
+--   * 'delimiter' = \", \"
+--
+--   * 'bufSize'   = 'FL.defaultBufSize'
+--
 defSettings :: Settings
 defSettings = Settings Debug StdOut iso8601UTC ", " FL.defaultBufSize
 
+-- | Create a new 'Logger' with the given 'Settings'.
+-- Please note that the 'logLevel' can be dynamically adjusted by setting
+-- the environment variable @LOG_LEVEL@ accordingly. Likewise the buffer
+-- size can be dynamically set via @LOG_BUFFER@.
 new :: MonadIO m => Settings -> m Logger
 new s = liftIO $ do
     n <- fmap (readNote "Invalid LOG_BUFFER") <$> lookupEnv "LOG_BUFFER"
@@ -117,6 +127,7 @@ new s = liftIO $ do
     fmt :: DateFormat -> UnixTime -> IO ByteString
     fmt d = return . formatUnixTimeGMT (template d)
 
+-- | Invokes 'new' with default settings and the given output as log sink.
 create :: MonadIO m => Output -> m Logger
 create p = new defSettings { output = p }
 
@@ -125,14 +136,13 @@ readNote m s = case reads s of
     [(a, "")] -> a
     _         -> error m
 
+-- | Logs a message with the given level if greater of equal to the
+-- logger's threshold.
 log :: MonadIO m => Logger -> Level -> (Msg -> Msg) -> m ()
 log g l m = unless (level g > l) . liftIO $ putMsg g l m
 {-# INLINE log #-}
 
-logM :: MonadIO m => Logger -> Level -> m (Msg -> Msg) -> m ()
-logM g l m = unless (level g > l) $ m >>= putMsg g l
-{-# INLINE logM #-}
-
+-- | Abbreviation for 'log' using the corresponding log level.
 trace, debug, info, warn, err, fatal :: MonadIO m => Logger -> (Msg -> Msg) -> m ()
 trace g = log g Trace
 debug g = log g Debug
@@ -147,28 +157,17 @@ fatal g = log g Fatal
 {-# INLINE err   #-}
 {-# INLINE fatal #-}
 
-traceM, debugM, infoM, warnM, errM, fatalM :: MonadIO m => Logger -> m (Msg -> Msg) -> m ()
-traceM g = logM g Trace
-debugM g = logM g Debug
-infoM  g = logM g Info
-warnM  g = logM g Warn
-errM   g = logM g Error
-fatalM g = logM g Fatal
-{-# INLINE traceM #-}
-{-# INLINE debugM #-}
-{-# INLINE infoM  #-}
-{-# INLINE warnM  #-}
-{-# INLINE errM   #-}
-{-# INLINE fatalM #-}
-
+-- | Force buffered bytes to output sink.
 flush :: MonadIO m => Logger -> m ()
 flush = liftIO . FL.flushLogStr . _logger
 
+-- | Closes the logger.
 close :: MonadIO m => Logger -> m ()
 close g = liftIO $ do
     fromMaybe (return ()) (_closeDate g)
     FL.rmLoggerSet (_logger g)
 
+-- | Inspect this logger's threshold.
 level :: Logger -> Level
 level = logLevel . _settings
 {-# INLINE level #-}
