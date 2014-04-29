@@ -94,7 +94,7 @@ infixr 4 ~~
 -- | Concatenate two 'ToBytes' values.
 (+++) :: (ToBytes a, ToBytes b) => a -> b -> Builder
 a +++ b = bytes a <> bytes b
-infixr 5 +++
+infixr 6 +++
 
 -- | Type restriction. Useful to disambiguate string literals when
 -- using @OverloadedStrings@ pragma.
