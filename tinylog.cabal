@@ -4,11 +4,11 @@ synopsis:             Simplistic logging using fast-logger.
 author:               Toralf Wittner
 maintainer:           Toralf Wittner <tw@dtex.org>
 copyright:            (c) 2014 Toralf Wittner
-license:              MPL-2.0
+license:              OtherLicense
 license-file:         LICENSE
 category:             System
 build-type:           Simple
-cabal-version:        >= 1.20
+cabal-version:        >= 1.10
 
 description:
     Trivial logger on top of fast-logger.
@@ -30,9 +30,9 @@ library
 
     build-depends:
           base         == 4.*
-        , bytestring   >= 0.10
-        , date-cache   >= 0.3
-        , fast-logger  >= 2.1.4 && < 2.2
-        , text         >= 0.11  && < 1.2
+        , bytestring   >= 0.10.4 && < 0.11
+        , date-cache   >= 0.3    && < 0.4
+        , fast-logger  >= 2.1.4  && < 2.2
+        , text         >= 0.11   && < 1.2
         , transformers >= 0.3
-        , unix-time    >= 0.1
+        , unix-time    >= 0.1    && < 0.3

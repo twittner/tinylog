@@ -137,13 +137,13 @@ readNote m s = case reads s of
     [(a, "")] -> a
     _         -> error m
 
--- | Logs a message with the given level if greater of equal to the
+-- | Logs a message with the given level if greater or equal to the
 -- logger's threshold.
 log :: MonadIO m => Logger -> Level -> (Msg -> Msg) -> m ()
 log g l m = unless (level g > l) . liftIO $ putMsg g l m
 {-# INLINE log #-}
 
--- | Abbreviation for 'log' using the corresponding log level.
+-- | Abbreviation of 'log' using the corresponding log level.
 trace, debug, info, warn, err, fatal :: MonadIO m => Logger -> (Msg -> Msg) -> m ()
 trace g = log g Trace
 debug g = log g Debug
