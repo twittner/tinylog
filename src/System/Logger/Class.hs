@@ -4,6 +4,7 @@
 
 {-# LANGUAGE FlexibleContexts #-}
 
+-- | The 'MonadLogger' type-class and associated functions.
 module System.Logger.Class
     ( MonadLogger (..)
     , trace
@@ -25,8 +26,7 @@ module System.Logger.Class
     , L.iso8601UTC
 
     , module M
-    )
-where
+    ) where
 
 import System.Logger (Level (..))
 import System.Logger.Message as M

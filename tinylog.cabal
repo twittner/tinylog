@@ -24,9 +24,9 @@ library
     ghc-prof-options: -prof -auto-all
 
     exposed-modules:
-          System.Logger
-        , System.Logger.Class
-        , System.Logger.Message
+        System.Logger
+        System.Logger.Class
+        System.Logger.Message
 
     build-depends:
           base         == 4.*

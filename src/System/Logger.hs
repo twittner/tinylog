@@ -30,8 +30,7 @@ module System.Logger
 
     , iso8601UTC
     , module M
-    )
-where
+    ) where
 
 import Prelude hiding (log)
 import Control.Applicative
