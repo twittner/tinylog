@@ -65,11 +65,12 @@ data Logger = Logger
     }
 
 data Settings = Settings
-    { logLevel  :: Level      -- ^ messages below this log level will be suppressed
-    , output    :: Output     -- ^ log sink
-    , format    :: DateFormat -- ^ the timestamp format (use \"\" to disable timestamps)
-    , delimiter :: ByteString -- ^ text to intersperse between fields of a log line
-    , bufSize   :: BufSize    -- ^ how many bytes to buffer before commiting to sink
+    { logLevel   :: Level      -- ^ messages below this log level will be suppressed
+    , output     :: Output     -- ^ log sink
+    , format     :: DateFormat -- ^ the timestamp format (use \"\" to disable timestamps)
+    , delimiter  :: ByteString -- ^ text to intersperse between fields of a log line
+    , netstrings :: Bool       -- ^ use <http://cr.yp.to/proto/netstrings.txt netstrings> encoding (fixes delimiter to \",\")
+    , bufSize    :: BufSize    -- ^ how many bytes to buffer before commiting to sink
     } deriving (Eq, Ord, Show)
 
 data Output
@@ -99,10 +100,12 @@ iso8601UTC = "%Y-%0m-%0dT%0H:%0M:%0SZ"
 --
 --   * 'delimiter' = \", \"
 --
+--   * 'netstrings' = False
+--
 --   * 'bufSize'   = 'FL.defaultBufSize'
 --
 defSettings :: Settings
-defSettings = Settings Debug StdOut iso8601UTC ", " FL.defaultBufSize
+defSettings = Settings Debug StdOut iso8601UTC ", " False FL.defaultBufSize
 
 -- | Create a new 'Logger' with the given 'Settings'.
 -- Please note that the 'logLevel' can be dynamically adjusted by setting
@@ -175,7 +178,9 @@ level = logLevel . _settings
 putMsg :: MonadIO m => Logger -> Level -> (Msg -> Msg) -> m ()
 putMsg g l f = liftIO $ do
     d <- maybe (return id) (liftM msg) (_getDate g)
-    let m = render (delimiter $ _settings g) (d . msg (l2b l) . f)
+    let n = netstrings $ _settings g
+    let x = delimiter  $ _settings g
+    let m = render x n (d . msg (l2b l) . f)
     FL.pushLogStr (_logger g) (FL.toLogStr m)
   where
     l2b :: Level -> ByteString

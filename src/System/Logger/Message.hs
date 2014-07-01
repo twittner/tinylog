@@ -35,11 +35,12 @@ import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Word
 
-import qualified Data.Text.Lazy                      as T
-import qualified Data.Text.Lazy.Encoding             as T
+import qualified Data.ByteString                     as S
 import qualified Data.ByteString.Lazy                as L
 import qualified Data.ByteString.Lazy.Builder        as B
 import qualified Data.ByteString.Lazy.Builder.Extras as B
+import qualified Data.Text.Lazy                      as T
+import qualified Data.Text.Lazy.Encoding             as T
 
 -- | Convert some value to a 'Builder'.
 class ToBytes a where
@@ -54,6 +55,7 @@ instance ToBytes Int8         where bytes = B.int8Dec
 instance ToBytes Int16        where bytes = B.int16Dec
 instance ToBytes Int32        where bytes = B.int32Dec
 instance ToBytes Int64        where bytes = B.int64Dec
+instance ToBytes Integer      where bytes = B.integerDec
 instance ToBytes Word         where bytes = B.wordDec
 instance ToBytes Word8        where bytes = B.word8Dec
 instance ToBytes Word16       where bytes = B.word16Dec
@@ -70,15 +72,19 @@ instance ToBytes Bool where
     bytes False = val "False"
 
 -- | Type representing log messages.
-newtype Msg = Msg { builders :: [Builder] }
+newtype Msg = Msg { elements :: [Element] }
+
+data Element
+    = Bytes L.ByteString
+    | Field ByteString L.ByteString
 
 -- | Turn some value into a 'Msg'.
 msg :: ToBytes a => a -> Msg -> Msg
-msg p (Msg m) = Msg (bytes p : m)
+msg p (Msg m) = Msg $ Bytes (lbstr p) : m
 
 -- | Render some field, i.e. a key-value pair delimited by \"=\".
 field :: ToBytes a => ByteString -> a -> Msg -> Msg
-field k v (Msg m) = Msg $ bytes k <> B.byteString "=" <> bytes v : m
+field k v (Msg m) = Msg $ Field k (lbstr v) : m
 
 -- | Alias of 'field'.
 (.=) :: ToBytes a => ByteString -> a -> Msg -> Msg
@@ -103,14 +109,35 @@ val = bytes
 
 -- | Intersperse parts of the log message with the given delimiter and
 -- render the whole builder into a 'L.ByteString'.
-render :: ByteString -> (Msg -> Msg) -> L.ByteString
-render s f = finish
-           . mconcat
-           . intersperse (B.byteString s)
-           . builders
-           . f
-           $ empty
+--
+-- If the second parameter is set to @True@, netstrings encoding is used for
+-- the message elements. Cf. <http://cr.yp.to/proto/netstrings.txt> for
+-- details.
+render :: ByteString -> Bool -> (Msg -> Msg) -> L.ByteString
+render _ True m = finish . mconcat . map enc . elements . m $ empty
   where
-    finish = B.toLazyByteStringWith (B.untrimmedStrategy 128 256) "\n"
-    empty  = Msg []
+    enc (Bytes   e) = netstrLB e
+    enc (Field k v) = netstrSB k <> eq <> netstrLB v
+    eq              = val "1:=,"
+
+render s False m = finish . mconcat . seps . map enc . elements . m $ empty
+  where
+    enc (Bytes   e) = bytes e
+    enc (Field k v) = k +++ val "=" +++ v
+    seps            = intersperse (bytes s)
+
+finish :: Builder -> L.ByteString
+finish = B.toLazyByteStringWith (B.untrimmedStrategy 256 256) "\n"
+
+empty :: Msg
+empty = Msg []
+
+netstrSB :: ByteString -> Builder
+netstrSB b = S.length b +++ val ":" +++ b +++ val ","
+
+netstrLB :: L.ByteString -> Builder
+netstrLB b = L.length b +++ val ":" +++ b +++ val ","
+
+lbstr :: ToBytes a => a -> L.ByteString
+lbstr = B.toLazyByteStringWith (B.untrimmedStrategy 64 64) L.empty . bytes
 
