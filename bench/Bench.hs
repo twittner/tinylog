@@ -42,11 +42,11 @@ f b n = L.length
       . render ", " b
       . foldr1 (.)
       . replicate n
-      $ msg (val "hello world")
+      $ msg (val "hello world" +++ (10000 :: Int) +++ (-42 :: Int64))
 
 g :: Bool -> Int -> Int64
 g b n = L.length
       . render ", " b
       . foldr1 (.)
       . replicate n
-      $ field "key" (val "value")
+      $ "key" .= (val "hello world" +++ (10000 :: Int) +++ (-42 :: Int64))
