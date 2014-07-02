@@ -19,6 +19,7 @@ module System.Logger
     , level
     , flush
     , close
+    , clone
 
     , log
     , trace
@@ -40,12 +41,14 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Char8 (pack)
 import Data.Maybe (fromMaybe)
 import Data.String
+import Data.Text (Text)
 import Data.UnixTime
 import System.Date.Cache
 import System.Environment (lookupEnv)
 import System.Log.FastLogger (BufSize)
 import System.Logger.Message as M
 
+import qualified Data.Text             as T
 import qualified System.Log.FastLogger as FL
 
 data Level
@@ -71,6 +74,7 @@ data Settings = Settings
     , delimiter  :: ByteString -- ^ text to intersperse between fields of a log line
     , netstrings :: Bool       -- ^ use <http://cr.yp.to/proto/netstrings.txt netstrings> encoding (fixes delimiter to \",\")
     , bufSize    :: BufSize    -- ^ how many bytes to buffer before commiting to sink
+    , name       :: Text       -- ^ logger name (use \"\" to unset)
     } deriving (Eq, Ord, Show)
 
 data Output
@@ -92,32 +96,38 @@ iso8601UTC = "%Y-%0m-%0dT%0H:%0M:%0SZ"
 
 -- | Default settings for use with 'new':
 --
---   * 'logLevel'  = 'Debug'
+--   * 'logLevel'   = 'Debug'
 --
---   * 'output'    = 'StdOut'
+--   * 'output'     = 'StdOut'
 --
---   * 'format'    = 'iso8601UTC'
+--   * 'format'     = 'iso8601UTC'
 --
---   * 'delimiter' = \", \"
+--   * 'delimiter'  = \", \"
 --
 --   * 'netstrings' = False
 --
---   * 'bufSize'   = 'FL.defaultBufSize'
+--   * 'bufSize'    = 'FL.defaultBufSize'
+--
+--   * 'name'       = \"\"
 --
 defSettings :: Settings
-defSettings = Settings Debug StdOut iso8601UTC ", " False FL.defaultBufSize
+defSettings = Settings Debug StdOut iso8601UTC ", " False FL.defaultBufSize ""
 
 -- | Create a new 'Logger' with the given 'Settings'.
 -- Please note that the 'logLevel' can be dynamically adjusted by setting
 -- the environment variable @LOG_LEVEL@ accordingly. Likewise the buffer
--- size can be dynamically set via @LOG_BUFFER@.
+-- size can be dynamically set via @LOG_BUFFER@ and netstrings encoding
+-- can be enabled with @LOG_NETSTR=True@
 new :: MonadIO m => Settings -> m Logger
 new s = liftIO $ do
     n <- fmap (readNote "Invalid LOG_BUFFER") <$> lookupEnv "LOG_BUFFER"
     l <- fmap (readNote "Invalid LOG_LEVEL")  <$> lookupEnv "LOG_LEVEL"
+    e <- fmap (readNote "Invalid LOG_NETSTR") <$> lookupEnv "LOG_NETSTR"
     g <- fn (output s) (fromMaybe (bufSize s) n)
     c <- clockCache (format s)
-    let s' = s { logLevel = fromMaybe (logLevel s) l }
+    let s' = s { logLevel   = fromMaybe (logLevel s) l
+               , netstrings = fromMaybe (netstrings s) e
+               }
     return $ Logger g s' (fst <$> c) (snd <$> c)
   where
     fn StdOut   = FL.newStdoutLoggerSet
@@ -160,6 +170,11 @@ fatal g = log g Fatal
 {-# INLINE err   #-}
 {-# INLINE fatal #-}
 
+-- | Clone the given logger and optionally give it a name.
+clone :: Maybe Text -> Logger -> Logger
+clone (Just n) g = g { _settings = (_settings g) { name = n } }
+clone Nothing  g = g
+
 -- | Force buffered bytes to output sink.
 flush :: MonadIO m => Logger -> m ()
 flush = liftIO . FL.flushLogStr . _logger
@@ -180,7 +195,8 @@ putMsg g l f = liftIO $ do
     d <- maybe (return id) (liftM msg) (_getDate g)
     let n = netstrings $ _settings g
     let x = delimiter  $ _settings g
-    let m = render x n (d . msg (l2b l) . f)
+    let s = name       $ _settings g
+    let m = render x n (d . msg (l2b l) . (if T.null s then id else "logger" .= s) . f)
     FL.pushLogStr (_logger g) (FL.toLogStr m)
   where
     l2b :: Level -> ByteString
