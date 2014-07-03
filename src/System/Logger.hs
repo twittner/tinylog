@@ -7,19 +7,37 @@
 -- | Small layer on top of @fast-logger@ which adds log-levels and
 -- timestamp support (using @date-cache@) and not much more.
 module System.Logger
-    ( Level    (..)
-    , Output   (..)
-    , Settings (..)
-    , Logger
-    , DateFormat
+    ( Settings
+    , defSettings
+    , logLevel
+    , setLogLevel
+    , output
+    , setOutput
+    , format
+    , setFormat
+    , delimiter
+    , setDelimiter
+    , netstrings
+    , setNetStrings
+    , bufSize
+    , setBufSize
+    , name
+    , setName
 
+    , Level    (..)
+    , Output   (..)
+
+    , DateFormat
+    , iso8601UTC
+
+    , Logger
     , new
     , create
-    , defSettings
     , level
     , flush
     , close
     , clone
+    , settings
 
     , log
     , trace
@@ -29,7 +47,6 @@ module System.Logger
     , err
     , fatal
 
-    , iso8601UTC
     , module M
     ) where
 
@@ -38,80 +55,22 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString (ByteString)
-import Data.ByteString.Char8 (pack)
 import Data.Maybe (fromMaybe)
-import Data.String
 import Data.Text (Text)
 import Data.UnixTime
 import System.Date.Cache
 import System.Environment (lookupEnv)
-import System.Log.FastLogger (BufSize)
 import System.Logger.Message as M
+import System.Logger.Settings
 
-import qualified Data.Text             as T
 import qualified System.Log.FastLogger as FL
 
-data Level
-    = Trace
-    | Debug
-    | Info
-    | Warn
-    | Error
-    | Fatal
-    deriving (Eq, Ord, Read, Show)
-
 data Logger = Logger
-    { _logger    :: FL.LoggerSet
-    , _settings  :: Settings
-    , _getDate   :: Maybe DateCacheGetter
-    , _closeDate :: Maybe DateCacheCloser
+    { logger    :: FL.LoggerSet
+    , settings  :: Settings
+    , getDate   :: Maybe DateCacheGetter
+    , closeDate :: Maybe DateCacheCloser
     }
-
-data Settings = Settings
-    { logLevel   :: Level      -- ^ messages below this log level will be suppressed
-    , output     :: Output     -- ^ log sink
-    , format     :: DateFormat -- ^ the timestamp format (use \"\" to disable timestamps)
-    , delimiter  :: ByteString -- ^ text to intersperse between fields of a log line
-    , netstrings :: Bool       -- ^ use <http://cr.yp.to/proto/netstrings.txt netstrings> encoding (fixes delimiter to \",\")
-    , bufSize    :: BufSize    -- ^ how many bytes to buffer before commiting to sink
-    , name       :: Text       -- ^ logger name (use \"\" to unset)
-    } deriving (Eq, Ord, Show)
-
-data Output
-    = StdOut
-    | StdErr
-    | Path FilePath
-    deriving (Eq, Ord, Show)
-
-newtype DateFormat = DateFormat
-    { template :: ByteString
-    } deriving (Eq, Ord, Show)
-
-instance IsString DateFormat where
-    fromString = DateFormat . pack
-
--- | ISO 8601 date-time format.
-iso8601UTC :: DateFormat
-iso8601UTC = "%Y-%0m-%0dT%0H:%0M:%0SZ"
-
--- | Default settings for use with 'new':
---
---   * 'logLevel'   = 'Debug'
---
---   * 'output'     = 'StdOut'
---
---   * 'format'     = 'iso8601UTC'
---
---   * 'delimiter'  = \", \"
---
---   * 'netstrings' = False
---
---   * 'bufSize'    = 'FL.defaultBufSize'
---
---   * 'name'       = \"\"
---
-defSettings :: Settings
-defSettings = Settings Debug StdOut iso8601UTC ", " False FL.defaultBufSize ""
 
 -- | Create a new 'Logger' with the given 'Settings'.
 -- Please note that the 'logLevel' can be dynamically adjusted by setting
@@ -170,34 +129,35 @@ fatal g = log g Fatal
 {-# INLINE err   #-}
 {-# INLINE fatal #-}
 
--- | Clone the given logger and optionally give it a name.
+-- | Clone the given logger and optionally give it a name
+-- (use @(Just \"\")@ to clear).
 clone :: Maybe Text -> Logger -> Logger
-clone (Just n) g = g { _settings = (_settings g) { name = n } }
+clone (Just n) g = g { settings = setName n  (settings g) }
 clone Nothing  g = g
 
 -- | Force buffered bytes to output sink.
 flush :: MonadIO m => Logger -> m ()
-flush = liftIO . FL.flushLogStr . _logger
+flush = liftIO . FL.flushLogStr . logger
 
 -- | Closes the logger.
 close :: MonadIO m => Logger -> m ()
 close g = liftIO $ do
-    fromMaybe (return ()) (_closeDate g)
-    FL.rmLoggerSet (_logger g)
+    fromMaybe (return ()) (closeDate g)
+    FL.rmLoggerSet (logger g)
 
 -- | Inspect this logger's threshold.
 level :: Logger -> Level
-level = logLevel . _settings
+level = logLevel . settings
 {-# INLINE level #-}
 
 putMsg :: MonadIO m => Logger -> Level -> (Msg -> Msg) -> m ()
 putMsg g l f = liftIO $ do
-    d <- maybe (return id) (liftM msg) (_getDate g)
-    let n = netstrings $ _settings g
-    let x = delimiter  $ _settings g
-    let s = name       $ _settings g
-    let m = render x n (d . msg (l2b l) . (if T.null s then id else "logger" .= s) . f)
-    FL.pushLogStr (_logger g) (FL.toLogStr m)
+    d <- maybe (return id) (liftM msg) (getDate g)
+    let n = netstrings $ settings g
+    let x = delimiter  $ settings g
+    let s = nameMsg    $ settings g
+    let m = render x n (d . msg (l2b l) . s . f)
+    FL.pushLogStr (logger g) (FL.toLogStr m)
   where
     l2b :: Level -> ByteString
     l2b Trace = "T"

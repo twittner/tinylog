@@ -1,5 +1,5 @@
 name:                 tinylog
-version:              0.9
+version:              0.10
 synopsis:             Simplistic logging using fast-logger.
 author:               Toralf Wittner
 maintainer:           Toralf Wittner <tw@dtex.org>
@@ -30,6 +30,9 @@ library
         System.Logger
         System.Logger.Class
         System.Logger.Message
+
+    other-modules:
+        System.Logger.Settings
 
     build-depends:
           base              == 4.*

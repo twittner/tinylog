@@ -6,24 +6,44 @@
 
 -- | The 'MonadLogger' type-class and associated functions.
 module System.Logger.Class
-    ( MonadLogger (..)
+    ( L.Settings
+    , L.defSettings
+    , L.logLevel
+    , L.setLogLevel
+    , L.output
+    , L.setOutput
+    , L.format
+    , L.setFormat
+    , L.delimiter
+    , L.setDelimiter
+    , L.netstrings
+    , L.setNetStrings
+    , L.bufSize
+    , L.setBufSize
+    , L.name
+    , L.setName
+
+    , L.Level    (..)
+    , L.Output   (..)
+
+    , L.DateFormat
+    , L.iso8601UTC
+
+    , L.new
+    , L.create
+    , L.level
+    , L.flush
+    , L.close
+    , L.clone
+    , L.settings
+
+    , MonadLogger (..)
     , trace
     , debug
     , info
     , warn
     , err
     , fatal
-
-    , L.Level    (..)
-    , L.Output   (..)
-    , L.Settings (..)
-    , L.Logger
-    , L.DateFormat
-
-    , L.new
-    , L.create
-    , L.defSettings
-    , L.iso8601UTC
 
     , module M
     ) where
