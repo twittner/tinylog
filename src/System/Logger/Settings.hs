@@ -4,7 +4,30 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module System.Logger.Settings where
+module System.Logger.Settings
+    ( Settings
+    , Level      (..)
+    , Output     (..)
+    , DateFormat (..)
+
+    , defSettings
+    , output
+    , setOutput
+    , format
+    , setFormat
+    , bufSize
+    , setBufSize
+    , delimiter
+    , setDelimiter
+    , netstrings
+    , setNetStrings
+    , logLevel
+    , setLogLevel
+    , name
+    , setName
+    , nameMsg
+    , iso8601UTC
+    ) where
 
 import Data.String
 import Data.ByteString (ByteString)
@@ -14,37 +37,61 @@ import System.Log.FastLogger (defaultBufSize)
 import System.Logger.Message
 
 data Settings = Settings
-    { logLevel   :: !Level      -- ^ messages below this log level will be suppressed
-    , output     :: !Output     -- ^ log sink
-    , format     :: !DateFormat -- ^ the timestamp format (use \"\" to disable timestamps)
-    , delimiter  :: !ByteString -- ^ text to intersperse between fields of a log line
-    , netstrings :: !Bool       -- ^ use <http://cr.yp.to/proto/netstrings.txt netstrings> encoding (fixes delimiter to \",\")
-    , bufSize    :: !Int        -- ^ how many bytes to buffer before commiting to sink
-    , name       :: !Text       -- ^ logger name
-    , nameMsg    :: Msg -> Msg
+    { _logLevel   :: !Level      -- ^ messages below this log level will be suppressed
+    , _output     :: !Output     -- ^ log sink
+    , _format     :: !DateFormat -- ^ the timestamp format (use \"\" to disable timestamps)
+    , _delimiter  :: !ByteString -- ^ text to intersperse between fields of a log line
+    , _netstrings :: !Bool       -- ^ use <http://cr.yp.to/proto/netstrings.txt netstrings> encoding (fixes delimiter to \",\")
+    , _bufSize    :: !Int        -- ^ how many bytes to buffer before commiting to sink
+    , _name       :: !Text       -- ^ logger name
+    , _nameMsg    :: Msg -> Msg
     }
 
+output :: Settings -> Output
+output = _output
+
 setOutput :: Output -> Settings -> Settings
-setOutput x s = s { output = x }
+setOutput x s = s { _output = x }
+
+format :: Settings -> DateFormat
+format = _format
 
 setFormat :: DateFormat -> Settings -> Settings
-setFormat x s = s { format = x }
+setFormat x s = s { _format = x }
+
+bufSize :: Settings -> Int
+bufSize = _bufSize
 
 setBufSize :: Int -> Settings -> Settings
-setBufSize x s = s { bufSize = max 1 x }
+setBufSize x s = s { _bufSize = max 1 x }
+
+delimiter :: Settings -> ByteString
+delimiter = _delimiter
 
 setDelimiter :: ByteString -> Settings -> Settings
-setDelimiter x s = s { delimiter = x }
+setDelimiter x s = s { _delimiter = x }
+
+netstrings :: Settings -> Bool
+netstrings = _netstrings
 
 setNetStrings :: Bool -> Settings -> Settings
-setNetStrings x s = s { netstrings = x }
+setNetStrings x s = s { _netstrings = x }
+
+logLevel :: Settings -> Level
+logLevel = _logLevel
 
 setLogLevel :: Level -> Settings -> Settings
-setLogLevel x s = s { logLevel = x }
+setLogLevel x s = s { _logLevel = x }
+
+name :: Settings -> Text
+name = _name
 
 setName :: Text -> Settings -> Settings
-setName "" s = s { name = "", nameMsg = id }
-setName xs s = s { name = xs, nameMsg = "logger" .= xs }
+setName "" s = s { _name = "", _nameMsg = id }
+setName xs s = s { _name = xs, _nameMsg = "logger" .= xs }
+
+nameMsg :: Settings -> (Msg -> Msg)
+nameMsg = _nameMsg
 
 data Level
     = Trace

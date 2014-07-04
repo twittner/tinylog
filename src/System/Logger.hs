@@ -84,9 +84,9 @@ new s = liftIO $ do
     e <- fmap (readNote "Invalid LOG_NETSTR") <$> lookupEnv "LOG_NETSTR"
     g <- fn (output s) (fromMaybe (bufSize s) n)
     c <- clockCache (format s)
-    let s' = s { logLevel   = fromMaybe (logLevel s) l
-               , netstrings = fromMaybe (netstrings s) e
-               }
+    let s' = setLogLevel (fromMaybe (logLevel s) l)
+           . setNetStrings (fromMaybe (netstrings s) e)
+           $ s
     return $ Logger g s' (fst <$> c) (snd <$> c)
   where
     fn StdOut   = FL.newStdoutLoggerSet
@@ -101,7 +101,7 @@ new s = liftIO $ do
 
 -- | Invokes 'new' with default settings and the given output as log sink.
 create :: MonadIO m => Output -> m Logger
-create p = new defSettings { output = p }
+create o = new $ setOutput o defSettings
 
 readNote :: Read a => String -> String -> a
 readNote m s = case reads s of
@@ -132,7 +132,7 @@ fatal g = log g Fatal
 -- | Clone the given logger and optionally give it a name
 -- (use @(Just \"\")@ to clear).
 clone :: Maybe Text -> Logger -> Logger
-clone (Just n) g = g { settings = setName n  (settings g) }
+clone (Just n) g = g { settings = setName n (settings g) }
 clone Nothing  g = g
 
 -- | Force buffered bytes to output sink.
