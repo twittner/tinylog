@@ -29,6 +29,7 @@ module System.Logger.Class
     , L.DateFormat
     , L.iso8601UTC
 
+    , L.Logger
     , L.new
     , L.create
     , L.level
