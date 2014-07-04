@@ -68,7 +68,7 @@ import qualified System.Log.FastLogger as FL
 data Logger = Logger
     { logger    :: FL.LoggerSet
     , settings  :: Settings
-    , getDate   :: Maybe DateCacheGetter
+    , getDate   :: IO (Msg -> Msg)
     , closeDate :: Maybe DateCacheCloser
     }
 
@@ -87,7 +87,7 @@ new s = liftIO $ do
     let s' = setLogLevel (fromMaybe (logLevel s) l)
            . setNetStrings (fromMaybe (netstrings s) e)
            $ s
-    return $ Logger g s' (fst <$> c) (snd <$> c)
+    return $ Logger g s' (maybe (return id) (liftM msg) (fst <$> c)) (snd <$> c)
   where
     fn StdOut   = FL.newStdoutLoggerSet
     fn StdErr   = FL.newStderrLoggerSet
@@ -152,18 +152,18 @@ level = logLevel . settings
 
 putMsg :: MonadIO m => Logger -> Level -> (Msg -> Msg) -> m ()
 putMsg g l f = liftIO $ do
-    d <- maybe (return id) (liftM msg) (getDate g)
+    d <- getDate g
     let n = netstrings $ settings g
     let x = delimiter  $ settings g
     let s = nameMsg    $ settings g
-    let m = render x n (d . msg (l2b l) . s . f)
+    let m = render x n (d . lmsg l . s . f)
     FL.pushLogStr (logger g) (FL.toLogStr m)
-  where
-    l2b :: Level -> ByteString
-    l2b Trace = "T"
-    l2b Debug = "D"
-    l2b Info  = "I"
-    l2b Warn  = "W"
-    l2b Error = "E"
-    l2b Fatal = "F"
 
+lmsg :: Level -> (Msg -> Msg)
+lmsg Trace = msg (val "T")
+lmsg Debug = msg (val "D")
+lmsg Info  = msg (val "I")
+lmsg Warn  = msg (val "W")
+lmsg Error = msg (val "E")
+lmsg Fatal = msg (val "F")
+{-# INLINE lmsg #-}

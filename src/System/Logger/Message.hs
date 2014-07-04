@@ -18,12 +18,14 @@
 module System.Logger.Message
     ( ToBytes (..)
     , Msg
+    , Builder
     , msg
     , field
     , (.=)
     , (+++)
     , (~~)
     , val
+    , eval
     , render
     ) where
 
@@ -31,6 +33,7 @@ import Data.ByteString (ByteString)
 import Data.Double.Conversion.Text
 import Data.Int
 import Data.Monoid
+import Data.String
 import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Word
@@ -49,6 +52,12 @@ data Builder = Builder !Int B.Builder
 instance Monoid Builder where
     mempty = Builder 0 mempty
     (Builder x a) `mappend` (Builder y b) = Builder (x + y) (a <> b)
+
+instance IsString Builder where
+    fromString = bytes
+
+eval :: Builder -> L.ByteString
+eval (Builder n b) = B.toLazyByteStringWith (B.safeStrategy n 256) L.empty b
 
 -- | Convert some value to a 'Builder'.
 class ToBytes a where
