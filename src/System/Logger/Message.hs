@@ -10,7 +10,7 @@
 -- For example:
 --
 -- @
--- > g <- new defSettings { bufSize = 1, output = StdOut }
+-- > g <- new (setBufSize 1 . setOutput StdOut $ defSettings)
 -- > info g $ msg "some text" ~~ "key" .= "value" ~~ "okay" .= True
 -- 2014-04-28T21:18:20Z, I, some text, key=value, okay=True
 -- >
