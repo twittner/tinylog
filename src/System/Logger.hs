@@ -52,13 +52,12 @@ module System.Logger
 
 import Prelude hiding (log)
 import Control.Applicative
+import Control.AutoUpdate
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.ByteString (ByteString)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.UnixTime
-import System.Date.Cache
 import System.Environment (lookupEnv)
 import System.Logger.Message as M
 import System.Logger.Settings
@@ -69,7 +68,6 @@ data Logger = Logger
     { logger    :: FL.LoggerSet
     , settings  :: Settings
     , getDate   :: IO (Msg -> Msg)
-    , closeDate :: Maybe DateCacheCloser
     }
 
 -- | Create a new 'Logger' with the given 'Settings'.
@@ -83,21 +81,18 @@ new s = liftIO $ do
     l <- fmap (readNote "Invalid LOG_LEVEL")  <$> lookupEnv "LOG_LEVEL"
     e <- fmap (readNote "Invalid LOG_NETSTR") <$> lookupEnv "LOG_NETSTR"
     g <- fn (output s) (fromMaybe (bufSize s) n)
-    c <- clockCache (format s)
     let s' = setLogLevel (fromMaybe (logLevel s) l)
            . setNetStrings (fromMaybe (netstrings s) e)
            $ s
-    return $ Logger g s' (maybe (return id) (liftM msg) (fst <$> c)) (snd <$> c)
+    Logger g s' <$> mkGetDate (format s)
   where
     fn StdOut   = FL.newStdoutLoggerSet
     fn StdErr   = FL.newStderrLoggerSet
     fn (Path p) = flip FL.newFileLoggerSet p
 
-    clockCache "" = return Nothing
-    clockCache f  = Just <$> clockDateCacher (DateCacheConf getUnixTime (fmt f))
-
-    fmt :: DateFormat -> UnixTime -> IO ByteString
-    fmt d = return . formatUnixTimeGMT (template d)
+    mkGetDate "" = return (return id)
+    mkGetDate f  = mkAutoUpdate defaultUpdateSettings
+        { updateAction = msg . formatUnixTimeGMT (template f) <$> getUnixTime }
 
 -- | Invokes 'new' with default settings and the given output as log sink.
 create :: MonadIO m => Output -> m Logger
@@ -141,9 +136,7 @@ flush = liftIO . FL.flushLogStr . logger
 
 -- | Closes the logger.
 close :: MonadIO m => Logger -> m ()
-close g = liftIO $ do
-    fromMaybe (return ()) (closeDate g)
-    FL.rmLoggerSet (logger g)
+close g = liftIO $ FL.rmLoggerSet (logger g)
 
 -- | Inspect this logger's threshold.
 level :: Logger -> Level

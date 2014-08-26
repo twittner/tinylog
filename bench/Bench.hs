@@ -6,15 +6,15 @@
 
 module Main (main) where
 
+import Criterion
 import Criterion.Main
-import Criterion.Config
 import Data.Int
 import System.Logger.Message
 
 import qualified Data.ByteString.Lazy as L
 
 main :: IO ()
-main = defaultMainWith defaultConfig (return ())
+main = defaultMain
     [ bgroup "direct"
         [ bench "msg/8"  (whnf (f False) 8)
         , bench "msg/16" (whnf (f False) 16)
