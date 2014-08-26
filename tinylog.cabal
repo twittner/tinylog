@@ -1,5 +1,5 @@
 name:                 tinylog
-version:              0.10.3
+version:              0.10.4
 synopsis:             Simplistic logging using fast-logger.
 author:               Toralf Wittner
 maintainer:           Toralf Wittner <tw@dtex.org>
@@ -38,7 +38,7 @@ library
           base              == 4.*
         , bytestring        >= 0.10.4 && < 0.11
         , auto-update       == 0.1.*
-        , double-conversion == 0.2.*
+        , double-conversion >= 0.2    && < 2.1
         , fast-logger       >= 2.1.4  && < 2.3
         , text              >= 0.11   && < 1.2
         , transformers      >= 0.3
