@@ -42,15 +42,15 @@ import System.Log.FastLogger (defaultBufSize)
 import System.Logger.Message
 
 data Settings = Settings
-    { _logLevel   :: !Level         -- ^ messages below this log level will be suppressed
-    , _levelMap   :: Map Text Level -- ^ log level per named logger
-    , _output     :: !Output        -- ^ log sink
-    , _format     :: !DateFormat    -- ^ the timestamp format (use \"\" to disable timestamps)
-    , _delimiter  :: !ByteString    -- ^ text to intersperse between fields of a log line
-    , _netstrings :: !Bool          -- ^ use <http://cr.yp.to/proto/netstrings.txt netstrings> encoding (fixes delimiter to \",\")
-    , _bufSize    :: !Int           -- ^ how many bytes to buffer before commiting to sink
-    , _name       :: Maybe Text     -- ^ logger name
-    , _nameMsg    :: Msg -> Msg
+    { _logLevel   :: !Level            -- ^ messages below this log level will be suppressed
+    , _levelMap   :: !(Map Text Level) -- ^ log level per named logger
+    , _output     :: !Output           -- ^ log sink
+    , _format     :: !DateFormat       -- ^ the timestamp format (use \"\" to disable timestamps)
+    , _delimiter  :: !ByteString       -- ^ text to intersperse between fields of a log line
+    , _netstrings :: !Bool             -- ^ use <http://cr.yp.to/proto/netstrings.txt netstrings> encoding (fixes delimiter to \",\")
+    , _bufSize    :: !Int              -- ^ how many bytes to buffer before commiting to sink
+    , _name       :: !(Maybe Text)     -- ^ logger name
+    , _nameMsg    :: !(Msg -> Msg)
     }
 
 output :: Settings -> Output

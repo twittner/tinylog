@@ -1,4 +1,4 @@
-0.11
+0.12.0
 -----------------------------------------------------------------------------
 - Add support for logger-specific log-levels.
 - Changed logger `name` in settings to `Maybe Text`.
