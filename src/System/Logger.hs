@@ -2,15 +2,19 @@
 -- License, v. 2.0. If a copy of the MPL was not distributed with this
 -- file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+{-# LANGUAGE BangPatterns      #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Small layer on top of @fast-logger@ which adds log-levels and
--- timestamp support (using @date-cache@) and not much more.
+-- timestamp support and not much more.
 module System.Logger
-    ( Settings
+    ( -- * Settings
+      Settings
     , defSettings
     , logLevel
     , setLogLevel
+    , logLevelOf
+    , setLogLevelOf
     , output
     , setOutput
     , format
@@ -24,13 +28,14 @@ module System.Logger
     , name
     , setName
 
-    , Level    (..)
-    , Output   (..)
-
+      -- * Type definitions
+    , Logger
+    , Level      (..)
+    , Output     (..)
     , DateFormat
     , iso8601UTC
 
-    , Logger
+      -- * Core API
     , new
     , create
     , level
@@ -39,6 +44,7 @@ module System.Logger
     , clone
     , settings
 
+      -- ** Logging
     , log
     , trace
     , debug
@@ -62,6 +68,7 @@ import System.Environment (lookupEnv)
 import System.Logger.Message as M
 import System.Logger.Settings
 
+import qualified Data.Map.Strict       as Map
 import qualified System.Log.FastLogger as FL
 
 data Logger = Logger
@@ -75,15 +82,38 @@ data Logger = Logger
 -- the environment variable @LOG_LEVEL@ accordingly. Likewise the buffer
 -- size can be dynamically set via @LOG_BUFFER@ and netstrings encoding
 -- can be enabled with @LOG_NETSTR=True@
+--
+-- Since version 0.11 one can also use @LOG_LEVEL_MAP@ to specify log
+-- levels per (named) logger. The syntax uses standard haskell syntax for
+-- association lists of type @[(Text, Level)]@. For example:
+--
+-- @
+-- $ LOG_LEVEL=Info LOG_LEVEL_MAP='[("foo", Warn), ("bar", Trace)]' cabal repl
+-- > g1 <- new defSettings
+-- > let g2 = clone (Just "foo") g
+-- > let g3 = clone (Just "bar") g
+-- > let g4 = clone (Just "xxx") g
+-- > logLevel (settings g1)
+-- Info
+-- > logLevel (settings g2)
+-- Warn
+-- > logLevel (settings g3)
+-- Trace
+-- > logLevel (settings g4)
+-- Info
+-- @
 new :: MonadIO m => Settings -> m Logger
 new s = liftIO $ do
-    n <- fmap (readNote "Invalid LOG_BUFFER") <$> lookupEnv "LOG_BUFFER"
-    l <- fmap (readNote "Invalid LOG_LEVEL")  <$> lookupEnv "LOG_LEVEL"
-    e <- fmap (readNote "Invalid LOG_NETSTR") <$> lookupEnv "LOG_NETSTR"
+    !n <- fmap (readNote "Invalid LOG_BUFFER") <$> lookupEnv "LOG_BUFFER"
+    !l <- fmap (readNote "Invalid LOG_LEVEL")  <$> lookupEnv "LOG_LEVEL"
+    !e <- fmap (readNote "Invalid LOG_NETSTR") <$> lookupEnv "LOG_NETSTR"
+    !m <- fromMaybe "[]" <$> lookupEnv "LOG_LEVEL_MAP"
+    let !k  = logLevelMap s `mergeWith` m
+    let !s' = setLogLevel (fromMaybe (logLevel s) l)
+            . setNetStrings (fromMaybe (netstrings s) e)
+            . setLogLevelMap k
+            $ s
     g <- fn (output s) (fromMaybe (bufSize s) n)
-    let s' = setLogLevel (fromMaybe (logLevel s) l)
-           . setNetStrings (fromMaybe (netstrings s) e)
-           $ s
     Logger g s' <$> mkGetDate (format s)
   where
     fn StdOut   = FL.newStdoutLoggerSet
@@ -93,6 +123,8 @@ new s = liftIO $ do
     mkGetDate "" = return (return id)
     mkGetDate f  = mkAutoUpdate defaultUpdateSettings
         { updateAction = msg . formatUnixTimeGMT (template f) <$> getUnixTime }
+
+    mergeWith m e = Map.fromList (readNote "Invalid LOG_LEVEL_MAP" e) `Map.union` m
 
 -- | Invokes 'new' with default settings and the given output as log sink.
 create :: MonadIO m => Output -> m Logger
@@ -125,10 +157,16 @@ fatal g = log g Fatal
 {-# INLINE fatal #-}
 
 -- | Clone the given logger and optionally give it a name
--- (use @(Just \"\")@ to clear).
+-- (use @Nothing@ to clear).
+--
+-- If 'logLevelOf' returns a custom 'Level' for this name
+-- then the cloned logger will use it for its log messages.
 clone :: Maybe Text -> Logger -> Logger
-clone (Just n) g = g { settings = setName n (settings g) }
-clone Nothing  g = g
+clone Nothing  g = g { settings = setName Nothing (settings g) }
+clone (Just n) g =
+    let s = settings g
+        l = fromMaybe (logLevel s) $ logLevelOf n s
+    in g { settings = setName (Just n) . setLogLevel l $ s }
 
 -- | Force buffered bytes to output sink.
 flush :: MonadIO m => Logger -> m ()
