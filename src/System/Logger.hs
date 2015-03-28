@@ -56,7 +56,6 @@ module System.Logger
     , module M
     ) where
 
-import Prelude hiding (log)
 import Control.Applicative
 import Control.AutoUpdate
 import Control.Monad
@@ -67,6 +66,7 @@ import Data.UnixTime
 import System.Environment (lookupEnv)
 import System.Logger.Message as M
 import System.Logger.Settings
+import Prelude hiding (log)
 
 import qualified Data.Map.Strict       as Map
 import qualified System.Log.FastLogger as FL
