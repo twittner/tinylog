@@ -32,7 +32,7 @@ module System.Logger
     , Logger
     , Level      (..)
     , Output     (..)
-    , DateFormat
+    , DateFormat (..)
     , iso8601UTC
 
       -- * Core API
