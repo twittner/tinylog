@@ -38,18 +38,19 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Char8 (pack)
 import Data.Map.Strict as Map
 import Data.Text (Text)
+import Data.UnixTime
 import System.Log.FastLogger (defaultBufSize)
 import System.Logger.Message
 
 data Settings = Settings
-    { _logLevel   :: !Level            -- ^ messages below this log level will be suppressed
-    , _levelMap   :: !(Map Text Level) -- ^ log level per named logger
-    , _output     :: !Output           -- ^ log sink
-    , _format     :: !DateFormat       -- ^ the timestamp format (use \"\" to disable timestamps)
-    , _delimiter  :: !ByteString       -- ^ text to intersperse between fields of a log line
-    , _netstrings :: !Bool             -- ^ use <http://cr.yp.to/proto/netstrings.txt netstrings> encoding (fixes delimiter to \",\")
-    , _bufSize    :: !Int              -- ^ how many bytes to buffer before commiting to sink
-    , _name       :: !(Maybe Text)     -- ^ logger name
+    { _logLevel   :: !Level              -- ^ messages below this log level will be suppressed
+    , _levelMap   :: !(Map Text Level)   -- ^ log level per named logger
+    , _output     :: !Output             -- ^ log sink
+    , _format     :: !(Maybe DateFormat) -- ^ the timestamp format
+    , _delimiter  :: !ByteString         -- ^ text to intersperse between fields of a log line
+    , _netstrings :: !Bool               -- ^ use <http://cr.yp.to/proto/netstrings.txt netstrings> encoding (fixes delimiter to \",\")
+    , _bufSize    :: !Int                -- ^ how many bytes to buffer before commiting to sink
+    , _name       :: !(Maybe Text)       -- ^ logger name
     , _nameMsg    :: !(Msg -> Msg)
     }
 
@@ -60,11 +61,11 @@ setOutput :: Output -> Settings -> Settings
 setOutput x s = s { _output = x }
 
 -- | The time and date format used for the timestamp part of a log line.
-format :: Settings -> DateFormat
+format :: Settings -> Maybe DateFormat
 format = _format
 
 setFormat :: DateFormat -> Settings -> Settings
-setFormat x s = s { _format = x }
+setFormat x s = s { _format = Just x }
 
 bufSize :: Settings -> Int
 bufSize = _bufSize
@@ -135,11 +136,11 @@ data Output
     deriving (Eq, Ord, Show)
 
 newtype DateFormat = DateFormat
-    { template :: ByteString
-    } deriving (Eq, Ord, Show)
+    { display :: UnixTime -> ByteString
+    }
 
 instance IsString DateFormat where
-    fromString = DateFormat . pack
+    fromString = DateFormat . formatUnixTimeGMT . pack
 
 -- | ISO 8601 date-time format.
 iso8601UTC :: DateFormat
@@ -162,5 +163,13 @@ iso8601UTC = "%Y-%0m-%0dT%0H:%0M:%0SZ"
 --   * 'name'       = Nothing
 --
 defSettings :: Settings
-defSettings = Settings Debug Map.empty StdOut iso8601UTC ", " False defaultBufSize Nothing id
-
+defSettings = Settings
+    Debug
+    Map.empty
+    StdOut
+    (Just iso8601UTC)
+    ", "
+    False
+    defaultBufSize
+    Nothing
+    id
