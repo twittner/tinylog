@@ -1,12 +1,12 @@
 name:                 tinylog
-version:              0.12.1
+version:              0.13.0
 synopsis:             Simplistic logging using fast-logger.
 author:               Toralf Wittner
 maintainer:           Toralf Wittner <tw@dtex.org>
-copyright:            (c) 2014 Toralf Wittner
-homepage:             https://github.com/twittner/tinylog/
-bug-reports:          https://github.com/twittner/tinylog/issues
-license:              OtherLicense
+copyright:            (C) 2014 Toralf Wittner
+homepage:             https://gitlab.com/twittner/tinylog/
+bug-reports:          https://gitlab.com/twittner/tinylog/issues
+license:              MPL-2.0
 license-file:         LICENSE
 category:             System
 build-type:           Simple
@@ -18,13 +18,12 @@ description:
 
 source-repository head
     type:             git
-    location:         git://github.com/twittner/tinylog.git
+    location:         git://gitlab.com/twittner/tinylog.git
 
 library
     default-language: Haskell2010
     hs-source-dirs:   src
     ghc-options:      -Wall -O2 -fwarn-tabs
-    ghc-prof-options: -prof -auto-all
 
     exposed-modules:
         System.Logger
@@ -36,13 +35,13 @@ library
 
     build-depends:
           base              >= 4.6    && < 5
-        , bytestring        >= 0.10.4 && < 1.0
+        , bytestring        >= 0.10.4
         , containers        >= 0.5
-        , double-conversion >= 0.2    && < 3.0
-        , fast-logger       >= 2.1.4  && < 3.0
-        , text              >= 0.11   && < 2.0
-        , transformers      >= 0.3    && < 1.0
-        , unix-time         >= 0.1    && < 0.4
+        , double-conversion >= 0.2
+        , fast-logger       >= 2.1.4
+        , text              >= 0.11
+        , transformers      >= 0.3
+        , unix-time         >= 0.1
 
 benchmark tinylog-bench
     type:             exitcode-stdio-1.0
@@ -51,7 +50,7 @@ benchmark tinylog-bench
     hs-source-dirs:   bench
     ghc-options:      -Wall -O2 -fwarn-tabs
     build-depends:
-          base       == 4.*
+          base
         , bytestring
         , criterion  >= 1.0.0.2
         , tinylog

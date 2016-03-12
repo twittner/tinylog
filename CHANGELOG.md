@@ -1,3 +1,8 @@
+0.13.0
+-----------------------------------------------------------------------------
+- Change `DateFormat` representation to `UnixTime -> ByteString`. This
+  is mainly to allow clients complete control over date and time formatting.
+
 0.12.1
 -----------------------------------------------------------------------------
 - Relax upper-bound of `fast-logger` dependency.
